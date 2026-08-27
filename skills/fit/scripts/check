@@ -1,0 +1,155 @@
+#!/usr/bin/env python3
+"""Measure a draft against the terminal it is about to be printed into.
+
+Prints one of: OK / OVER by <n> lines / NO TERMINAL
+"""
+
+import fcntl
+import os
+import struct
+import subprocess
+import sys
+import termios
+import unicodedata
+
+# Claude Code lays a reply out as a row of [gutter, text] spanning the full
+# width, the gutter a box of minWidth 2. The text column gets the rest.
+GUTTER = 2
+
+# Rows the reply never gets: everything Claude Code holds under it. Measured
+# against the screen, not derived.
+BOTTOM = 11
+
+TAB_STOP = 4
+MAX_DEPTH = 16
+
+
+def ps(pid, field):
+    try:
+        done = subprocess.run(
+            ["ps", "-o", field, "-p", str(pid)],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return done.stdout.strip() or None
+
+
+def ancestor_ttys():
+    """Every terminal device found walking up from this process.
+
+    The command runs without a controlling terminal, so /dev/tty is not
+    configured and tput falls back to 80x24 without saying so. The terminal
+    belongs to an ancestor.
+    """
+    pid = os.getpid()
+    for _ in range(MAX_DEPTH):
+        name = ps(pid, "tty=")
+        if name and name not in ("??", "?", "-"):
+            yield name if name.startswith("/") else "/dev/" + name
+        parent = ps(pid, "ppid=")
+        if not parent or not parent.isdigit():
+            return
+        pid = int(parent)
+        if pid <= 1:
+            return
+
+
+def winsize(device):
+    try:
+        fd = os.open(device, os.O_RDONLY | os.O_NONBLOCK)
+    except OSError:
+        return None
+    try:
+        packed = fcntl.ioctl(fd, termios.TIOCGWINSZ, b"\0" * 8)
+    except OSError:
+        return None
+    finally:
+        os.close(fd)
+    rows, cols = struct.unpack("hhhh", packed)[:2]
+    return (cols, rows) if cols > 0 and rows > 0 else None
+
+
+def terminal_size():
+    for device in ancestor_ttys():
+        size = winsize(device)
+        if size:
+            return size
+    return None
+
+
+def char_width(char):
+    if unicodedata.category(char) in ("Mn", "Me", "Cf"):
+        return 0
+    return 2 if unicodedata.east_asian_width(char) in ("W", "F") else 1
+
+
+def display_width(text):
+    return sum(char_width(char) for char in text)
+
+
+def wrapped(line, width):
+    """Rows one line becomes, following the renderer's word wrap.
+
+    Words are kept whole and a row is opened when the next one will not fit. A
+    word wider than the row is left to overflow, and the terminal breaks it.
+    """
+    rows = [""]
+    for index, word in enumerate(line.split(" ")):
+        rows[-1] = rows[-1].lstrip()
+        used = display_width(rows[-1])
+        if index and used:
+            rows[-1] += " "
+            used += 1
+        size = display_width(word)
+        if used and size and used + size > width:
+            rows.append("")
+        rows[-1] += word
+
+    return sum(max(1, -(-display_width(row) // width)) for row in rows)
+
+
+def rendered_lines(text, width):
+    lines = text.split("\n")
+    if lines and lines[-1] == "":
+        # A trailing newline ends the last line, it does not add one.
+        lines.pop()
+
+    # Nothing scrolls sideways: a long line is wrapped or cut, never held on one
+    # row. Counting every line as wrapped errs toward a shorter reply.
+    return sum(wrapped(line.expandtabs(TAB_STOP), width) for line in lines)
+
+
+def main(argv):
+    if len(argv) != 2:
+        print("usage: check <draft-file>", file=sys.stderr)
+        return 2
+
+    try:
+        with open(argv[1], encoding="utf-8") as draft:
+            text = draft.read()
+    except OSError as error:
+        print(f"cannot read {argv[1]}: {error}", file=sys.stderr)
+        return 2
+
+    size = terminal_size()
+    if size is None:
+        print("NO TERMINAL")
+        return 0
+
+    cols, rows = size
+    width = max(cols - GUTTER, 20)
+    budget = max(rows - BOTTOM, 1)
+    used = rendered_lines(text, width)
+
+    if used <= budget:
+        print("OK")
+    else:
+        print(f"OVER by {used - budget} lines")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))

@@ -1,0 +1,14 @@
+{
+  "name": "terminal-viewport-marketplace",
+  "description": "Marketplace distributing terminal-viewport.",
+  "owner": {
+    "name": "HotariTobu",
+    "url": "https://github.com/HotariTobu"
+  },
+  "plugins": [
+    {
+      "name": "terminal-viewport",
+      "source": "./"
+    }
+  ]
+}

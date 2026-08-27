@@ -1,0 +1,16 @@
+{
+  "name": "terminal-viewport",
+  "version": "0.1.0",
+  "description": "Keeps a reply within one screen of the terminal.",
+  "author": {
+    "name": "HotariTobu",
+    "url": "https://github.com/HotariTobu"
+  },
+  "repository": "https://github.com/HotariTobu/terminal-viewport",
+  "license": "CC0-1.0",
+  "keywords": [
+    "terminal",
+    "viewport",
+    "fit"
+  ]
+}
