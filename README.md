@@ -4,9 +4,18 @@ Keeps a reply within one screen of the terminal.
 
 ## Install
 
+Claude Code:
+
 ```
 /plugin marketplace add HotariTobu/terminal-viewport
 /plugin install terminal-viewport@terminal-viewport-marketplace
+```
+
+Codex:
+
+```
+codex plugin marketplace add HotariTobu/terminal-viewport
+codex plugin add terminal-viewport@terminal-viewport-marketplace
 ```
 
 ## Usage

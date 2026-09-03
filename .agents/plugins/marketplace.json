@@ -1,0 +1,15 @@
+{
+  "name": "terminal-viewport-marketplace",
+  "interface": {
+    "displayName": "terminal-viewport"
+  },
+  "plugins": [
+    {
+      "name": "terminal-viewport",
+      "source": {
+        "source": "local",
+        "path": "./"
+      }
+    }
+  ]
+}

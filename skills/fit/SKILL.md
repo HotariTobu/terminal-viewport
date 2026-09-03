@@ -1,6 +1,8 @@
 ---
 name: fit
-description: Fit the reply to one screen of the terminal
+description: Fit the reply to one screen of the terminal. Use when the user invokes it, with a message to answer or with nothing to cut the previous reply.
+license: CC0-1.0
+compatibility: Requires a terminal with a real TTY and python3. The leading placeholder needs a client that substitutes skill arguments into the body; on clients that do not, pass the message as ordinary text after the skill name.
 argument-hint: "[a message, or nothing]"
 ---
 

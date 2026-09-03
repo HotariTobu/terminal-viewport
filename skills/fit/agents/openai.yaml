@@ -1,0 +1,5 @@
+interface:
+  display_name: "Fit"
+  short_description: "Keep the reply within one screen of the terminal"
+policy:
+  allow_implicit_invocation: false
